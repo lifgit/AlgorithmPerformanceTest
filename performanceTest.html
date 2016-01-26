@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>JavaScript Performance Test</title>
+        <link href="styles/main.css" rel="stylesheet" type="text/css">
+
+        <script type="text/javascript" src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+        <script type="text/javascript" src="http://dimplejs.org/dist/dimple.v2.1.6.min.js" charset="utf-8"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.22/require.min.js"></script>
+          
+        <script>
+            var arrayMatchProcessor = function(){
+                var runTimes = 100;
+                var algorithmArr = [];
+                var library = {};
+				var testData = {};
+                var algorithmNameMap ={doubleLoopSearch:"Double loop search", 
+                                       objectHashSearch:"Object hash search",
+                                       binTreeSearch:"Binary tree search",
+                                       rbTreeSearch:"Red-Black tree search",
+                                       stringSearch:"String search"
+                                      }; 
+
+                function generateRandomArray(arraySize){
+                    var tempArray = [];
+                    for(var i = 0; i < arraySize; i++){
+                        var id = Math.round(Math.random() * 10000) + 10000;
+                        tempArray.push({userid: id, username: ("xyz" + id)});
+                    }
+                    return tempArray;
+                }
+
+                algorithmArr.push(function doubleLoopSearch() {
+                    var searchResultsLength = testData.searchResultsArray.length;
+                    var connectionsResultsLength = testData.connectionsResultsArray.length;
+                    for (var i=0; i<searchResultsLength; i++) {
+                        var searchResult = testData.searchResultsArray[i];
+                        var isConnected = false;
+                        for (var j=0; j<connectionsResultsLength; j++) {
+                            if (searchResult.userid == testData.connectionsResultsArray[j].userid ) {
+                                isConnected = true;
+                                break;
+                            }
+                        }
+                        if (isConnected) {
+                            searchResult.connected = 'yes';
+                        } else {
+                            searchResult.connected = 'no';
+                        }
+                    }
+                });
+
+                algorithmArr.push(function objectHashSearch() {
+                    var connectionsResultsHash = {};
+                    var len = testData.connectionsResultsArray.length;
+                    for (var i=0; i<len; i++) {
+                        var connectionResult = testData.connectionsResultsArray[i];
+                        connectionsResultsHash[connectionResult.userid] = connectionResult;
+                    }
+                    len = testData.searchResultsArray.length;
+                    for (var i=0; i<len; i++) {
+                        var searchResult = testData.searchResultsArray[i];
+                        if (connectionsResultsHash[searchResult.userid]) {
+                            searchResult.connected = 'yes';
+                        } else {
+                            searchResult.connected = 'no';
+                        }
+                    }
+                });
+
+                algorithmArr.push(function binTreeSearch() {
+					var binTree = new library.BinTree(function(a, b) {
+						return a - b;
+					});
+					var len = testData.connectionsResultsArray.length;
+					for (var i=0; i<len; i++) {
+						binTree.insert(testData.connectionsResultsArray[i].userid);
+					}
+					//console.log('binTree size:' + binTree.size);
+					len = testData.searchResultsArray.length;
+					for (var i=0; i<len; i++) {
+						var searchResult = testData.searchResultsArray[i];
+						var userid = binTree.find(searchResult.userid);
+						if (userid) {
+							searchResult.connected = 'yes';
+							//console.log( 'userid:' + searchResult.userid +  ', username: ' + searchResult.username + ' is found.');
+						} else {
+							searchResult.connected = 'no';
+						}
+					}
+				});
+
+                algorithmArr.push(function rbTreeSearch() {
+					var binTree = new library.RBTree(function(a, b) {
+						return a - b;
+					});
+					var len = testData.connectionsResultsArray.length;
+					for (var i=0; i<len; i++) {
+						binTree.insert(testData.connectionsResultsArray[i].userid);
+					}
+					//console.log('dst/rbTree size:' + binTree.size);
+					len = testData.searchResultsArray.length;
+					for (var i=0; i<len; i++) {
+						var searchResult = testData.searchResultsArray[i];
+						var userid = binTree.find(searchResult.userid);
+						if (userid) {
+							searchResult.connected = 'yes';
+							//console.log( 'userid:' + searchResult.userid +  ', username: ' + searchResult.username + ' is found.');
+						} else {
+							searchResult.connected = 'no';
+						}
+					}
+				});
+
+                algorithmArr.push(function stringSearch() {
+                    var userIds = [];
+                    var len = testData.connectionsResultsArray.length;
+                    for (var i=0; i<len; i++) {
+                        var connectionResult = testData.connectionsResultsArray[i];
+                        userIds.push('a' + connectionResult.userid + 'a');
+                    }
+                    var userIdsStr = userIds.join(',');
+                    len = testData.searchResultsArray.length;
+                    for (var i=0; i<len; i++) {
+                        var searchResult = testData.searchResultsArray[i];
+                        var userid = 'a' + searchResult.userid + 'a';
+                        if (userIdsStr.indexOf(userid) > -1) {
+                            searchResult.connected = 'yes';
+                            //console.log( 'userid:' + searchResult.userid +  ', username: ' + searchResult.username + ' is found.');
+                        } else {
+                            searchResult.connected = 'no';
+                        }
+                    }
+                });
+
+                // use result data to draw the chart to compare performance difference.
+                function drawChart(nodeId,data){
+                    var svg = dimple.newSvg(nodeId, 890, 450);
+                    var myChart = new dimple.chart(svg, data);
+                    myChart.setBounds(60, 30, 810, 305)
+                    var x = myChart.addCategoryAxis("x", "Repeat Count");
+                    x.addOrderRule("Repeat Count");
+                    myChart.addMeasureAxis("y", "Process Time(milisec)");
+                    myChart.addSeries("Method", dimple.plot.bar);
+                    myChart.addLegend(60, 10, 810, 20, "right");
+                    myChart.draw();
+                }
+
+                function testPerformance(func) {
+                    var costTime = 0;
+                    var startTime = new Date().getTime();
+                    func();
+                    var endTime = new Date().getTime();
+                    costTime = endTime - startTime;
+                    return costTime;
+                }
+
+                //main entrance
+                return function(setRunTimes) {
+				
+					require(['dist/bintree.min','dist/rbtree.min'], function (BinTree,RBTree) {
+						//generate data.
+						library.BinTree = BinTree;
+						library.RBTree = RBTree;
+						runTimes = setRunTimes||runTimes;
+						testData.connectionsResultsArray = generateRandomArray(300);
+						testData.searchResultsArray = generateRandomArray(100);
+						//data for chart
+						var data = [];
+						//test result in array
+						var sum = [];
+						//initialize the array with 0 for each algorithm
+						for(var j = 0; j < algorithmArr.length; j++){
+							sum.push(0);
+						}
+						//repeat multiple times and push the test result to array for drawing chart
+						for(var i = 0; i < runTimes; i++){    
+							for(var j = 0; j < algorithmArr.length; j++){
+								var rowData = {};
+								rowData["Repeat Count"] = i + 1;
+								var algorithName = algorithmArr[j].name;
+								rowData["Method"] = algorithName; 
+								sum[j] += testPerformance(algorithmArr[j]);
+								rowData["Process Time(milisec)"] = sum[j];
+								data.push(rowData);
+							}
+						}
+						//display final result
+						var infoNode = document.getElementById('info');
+						for(var j = 0; j < algorithmArr.length; j++){
+							var algorithName = algorithmArr[j].name;
+							var node = document.createElement("div");
+							node.innerText = algorithmNameMap[algorithName] + " run " + runTimes + ' times cost time: ' + sum[j] + 'ms';
+							infoNode.appendChild(node);
+						}
+
+						//paint result in chart
+						drawChart("#chartContainer", data);
+					});    
+                };
+            }();
+            function run(setRunTimes){
+                arrayMatchProcessor(setRunTimes);
+            }
+        </script>
+    </head>
+    <body onload="run();">
+        <div>
+            <div class="header"><h1>Javascript performance test</h1></div>
+            <div class="maincontent">
+                <div> <h3>Here I compared multiple algorithms for finding matched objects stored in two separate array, and the result...</h3> </div>
+
+                <br/>
+                <div id="info"></div>                
+                <div id="chartContainer"></div>
+                <br>
+            </div>
+            <div class="footer"></div>
+        </div>
+    </body>
+</html>
