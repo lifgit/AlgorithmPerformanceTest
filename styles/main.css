@@ -1,0 +1,34 @@
+html, body{
+    margin: 0;
+    padding: 0;
+}
+
+.header{
+    height: 40px;
+    width: 100%;
+    text-align: center;
+    background-color: lightsalmon
+}
+
+.maincontent{
+    padding:20px;
+    background-color: lightcyan;
+    height: 100%;
+    width: 100%;
+    clear: both;
+}
+#info div{
+    margin-left: 40px;
+    transform-style: preserve-3d;
+    display:list-item;
+}
+
+.footer{
+    height: 40px;
+    width: 100%;
+    background-color:darkcyan;
+    position:fixed;
+    bottom:0px;
+    right:0px;
+    left:0px;
+}
